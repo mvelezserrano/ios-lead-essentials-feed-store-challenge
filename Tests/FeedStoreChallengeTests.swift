@@ -7,12 +7,12 @@ import FeedStoreChallenge
 import CoreData
 
 class CoreDataFeedStore: FeedStore {
-    
+    private static let modelName = "FeedStore"
     private let container: NSPersistentContainer
     private let context: NSManagedObjectContext
     
     init(storeURL: URL) throws {
-        guard let modelURL = Bundle(for: CoreDataFeedStore.self).url(forResource: "FeedStore", withExtension:"momd") else {
+        guard let modelURL = Bundle(for: CoreDataFeedStore.self).url(forResource: CoreDataFeedStore.modelName, withExtension:"momd") else {
             throw NSError(domain: "Error loading model from bundle", code: 0)
         }
         
@@ -21,7 +21,7 @@ class CoreDataFeedStore: FeedStore {
         }
         
         let description = NSPersistentStoreDescription(url: storeURL)
-        container = NSPersistentContainer(name: "FeedStore", managedObjectModel: mom)
+        container = NSPersistentContainer(name: CoreDataFeedStore.modelName, managedObjectModel: mom)
         container.persistentStoreDescriptions = [description]
         
         var loadError: Swift.Error?
