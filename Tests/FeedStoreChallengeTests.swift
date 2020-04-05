@@ -34,10 +34,10 @@ class CoreDataFeedStore: FeedStore {
     func insert(_ feed: [LocalFeedImage], timestamp: Date, completion: @escaping InsertionCompletion) {
         let context = self.context
         context.perform {
-            let managedCache = ManagedCache(context: context)
-            managedCache.timestamp = timestamp
-            managedCache.feed = ManagedFeedImage.feed(from: feed, in: context)
             do {
+                let managedCache = try ManagedCache.createUnique(in: context)
+                managedCache.timestamp = timestamp
+                managedCache.feed = ManagedFeedImage.feed(from: feed, in: context)
                 try context.save()
                 completion(nil)
             } catch {
@@ -50,9 +50,7 @@ class CoreDataFeedStore: FeedStore {
         let context = self.context
         context.perform {
             do {
-                let request = NSFetchRequest<ManagedCache>(entityName: "ManagedCache")
-                request.returnsObjectsAsFaults = false
-                guard let managedCache = try context.fetch(request).first else {
+                guard let managedCache = try ManagedCache.fetch(in: context) else {
                     return completion(.empty)
                 }
                 completion(.found(feed: managedCache.localFeed, timestamp: managedCache.timestamp))
@@ -112,9 +110,9 @@ class FeedStoreChallengeTests: XCTestCase, FeedStoreSpecs {
 	}
 
 	func test_insert_overridesPreviouslyInsertedCacheValues() {
-//		let sut = makeSUT()
-//
-//		assertThatInsertOverridesPreviouslyInsertedCacheValues(on: sut)
+		let sut = makeSUT()
+
+		assertThatInsertOverridesPreviouslyInsertedCacheValues(on: sut)
 	}
 
 	func test_delete_deliversNoErrorOnEmptyCache() {

@@ -18,6 +18,19 @@ public class ManagedCache: NSManagedObject {
 }
 
 extension ManagedCache {
+    static func createUnique(in context: NSManagedObjectContext) throws -> ManagedCache {
+        if let existingManagedCache = try fetch(in: context) {
+            context.delete(existingManagedCache)
+        }
+        return ManagedCache(context: context)
+    }
+    
+    static func fetch(in context: NSManagedObjectContext) throws -> ManagedCache? {
+        let request = NSFetchRequest<ManagedCache>(entityName: "ManagedCache")
+        request.returnsObjectsAsFaults = false
+        return try context.fetch(request).first
+    }
+    
     var localFeed: [LocalFeedImage] {
         return feed
             .compactMap {
