@@ -32,11 +32,50 @@ class CoreDataFeedStore: FeedStore {
     }
     
     func insert(_ feed: [LocalFeedImage], timestamp: Date, completion: @escaping InsertionCompletion) {
-        
+        let context = self.context
+        context.perform {
+            let managedCache = ManagedCache(context: context)
+            managedCache.timestamp = timestamp
+            managedCache.feed = NSOrderedSet(array: feed.map {
+                let managedFeedImage = ManagedFeedImage(context: context)
+                managedFeedImage.id = $0.id
+                managedFeedImage.imageDescription = $0.description
+                managedFeedImage.location = $0.location
+                managedFeedImage.url = $0.url
+                
+                managedFeedImage.cache = managedCache
+                return managedFeedImage
+            })
+            do {
+                try context.save()
+                completion(nil)
+            } catch {
+                completion(error)
+            }
+        }
     }
     
     func retrieve(completion: @escaping RetrievalCompletion) {
-        completion(.empty)
+        let context = self.context
+        context.perform {
+            do {
+                let request = NSFetchRequest<ManagedCache>(entityName: "ManagedCache")
+                request.returnsObjectsAsFaults = false
+                guard let managedCache = try context.fetch(request).first else {
+                    return completion(.empty)
+                }
+                let localFeedImages: [LocalFeedImage] = managedCache.feed
+                    .compactMap {
+                        guard let managedFeedImage = $0 as? ManagedFeedImage else {
+                            return nil
+                        }
+                        return LocalFeedImage(id: managedFeedImage.id, description: managedFeedImage.imageDescription, location: managedFeedImage.location, url: managedFeedImage.url)
+                }
+                completion(.found(feed: localFeedImages, timestamp: managedCache.timestamp))
+            } catch {
+                completion(.failure(error))
+            }
+        }
     }
     
     func deleteCachedFeed(completion: @escaping DeletionCompletion) {
@@ -65,9 +104,9 @@ class FeedStoreChallengeTests: XCTestCase, FeedStoreSpecs {
 	}
 
 	func test_retrieve_deliversFoundValuesOnNonEmptyCache() {
-//		let sut = makeSUT()
-//
-//		assertThatRetrieveDeliversFoundValuesOnNonEmptyCache(on: sut)
+		let sut = makeSUT()
+
+		assertThatRetrieveDeliversFoundValuesOnNonEmptyCache(on: sut)
 	}
 
 	func test_retrieve_hasNoSideEffectsOnNonEmptyCache() {
