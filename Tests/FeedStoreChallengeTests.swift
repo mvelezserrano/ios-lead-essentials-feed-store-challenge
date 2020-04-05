@@ -61,7 +61,19 @@ class CoreDataFeedStore: FeedStore {
     }
     
     func deleteCachedFeed(completion: @escaping DeletionCompletion) {
-        completion(nil)
+        let context = self.context
+        context.perform {
+            do {
+                guard let existingManagedCache = try ManagedCache.fetch(in: context) else {
+                    return completion(.none)
+                }
+                context.delete(existingManagedCache)
+                try context.save()
+                completion(nil)
+            } catch {
+                completion(.some(error))
+            }
+        }
     }
 }
 
@@ -134,9 +146,9 @@ class FeedStoreChallengeTests: XCTestCase, FeedStoreSpecs {
 	}
 
 	func test_delete_emptiesPreviouslyInsertedCache() {
-//		let sut = makeSUT()
-//
-//		assertThatDeleteEmptiesPreviouslyInsertedCache(on: sut)
+		let sut = makeSUT()
+
+		assertThatDeleteEmptiesPreviouslyInsertedCache(on: sut)
 	}
 
 	func test_storeSideEffects_runSerially() {
