@@ -4,8 +4,32 @@
 
 import XCTest
 import FeedStoreChallenge
+import CoreData
 
 class CoreDataFeedStore: FeedStore {
+    
+    private let container: NSPersistentContainer
+    private let context: NSManagedObjectContext
+    
+    init(storeURL: URL) throws {
+        guard let modelURL = Bundle(for: CoreDataFeedStore.self).url(forResource: "FeedStore", withExtension:"momd") else {
+            throw NSError(domain: "Error loading model from bundle", code: 0)
+        }
+        
+        guard let mom = NSManagedObjectModel(contentsOf: modelURL) else {
+            throw NSError(domain: "Error initializing mom from", code: 0)
+        }
+        
+        let description = NSPersistentStoreDescription(url: storeURL)
+        container = NSPersistentContainer(name: "FeedStore", managedObjectModel: mom)
+        container.persistentStoreDescriptions = [description]
+        
+        var loadError: Swift.Error?
+        container.loadPersistentStores { loadError = $1 }
+        try loadError.map { throw $0 }
+        
+        context = container.newBackgroundContext()
+    }
     
     func insert(_ feed: [LocalFeedImage], timestamp: Date, completion: @escaping InsertionCompletion) {
         
@@ -103,7 +127,8 @@ class FeedStoreChallengeTests: XCTestCase, FeedStoreSpecs {
 	// - MARK: Helpers
 	
 	private func makeSUT() -> FeedStore {
-        let sut = CoreDataFeedStore()
+        let storeURL = URL(fileURLWithPath: "/dev/null")
+        let sut = try! CoreDataFeedStore(storeURL: storeURL)
         trackForMemoryLeaks(sut)
         return sut
 	}
